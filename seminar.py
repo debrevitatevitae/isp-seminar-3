@@ -119,7 +119,62 @@ def _(mo, np, phi, qutip, theta):
 
 
 @app.cell
-def _():
+def _(mo):
+    mo.md(r"""
+    ####Multiple qubit states
+    The easiest way in which multiple qubits are combined is when they are **uncorrellated**. For example, if two qubits _can be described separately_ as
+
+    $$
+    |\psi_0\rangle =
+    \begin{pmatrix}
+        \alpha_{0}\\
+        \alpha_{1}
+    \end{pmatrix},\qquad
+    |\psi_1\rangle =
+    \begin{pmatrix}
+        \beta_{0}\\
+        \beta_{1}
+    \end{pmatrix},
+    $$
+
+    then the compound state-vector is simply the tensor product of the two separate 1-qubit state-vectors,
+
+    $$
+    |\psi_\rangle = |\psi_0\rangle \otimes |\psi_1\rangle = \alpha_{00}|00\rangle + \alpha_{01}|01\rangle + \alpha_{10}|10\rangle + \alpha_{11}|11\rangle =
+    \begin{pmatrix}
+        \alpha_{00}\\
+        \alpha_{01}\\
+        \alpha_{10}\\
+        \alpha_{11}
+    \end{pmatrix}.
+    $$
+
+    Again, the normalization constraint must hold:
+
+    $$
+    \sum_{i\in\{0,1\}^2}|\alpha_i|^2=1.
+    $$
+
+    But things get more interesting than this! This happens when two states are correllated or **entangled**, i.e.
+
+    $$
+    \exist\; |\psi\rangle\neq\bigotimes_{i=1}^n|\psi_i\rangle.
+    $$
+
+    For example, consider one of the _Bell states_,
+
+    $$
+    |\psi\rangle = \frac{1}{\sqrt{2}}( |00\rangle + |11\rangle ).
+    $$
+
+    The two qubits are completely correllated, since measuring one of them automatically determines the other one.
+
+    > **Note**
+    >
+    > As you can see, 2 qubits give you a state-vector in a 4-dimensional Hilbert space (basis states: $|00\rangle$, $|01\rangle$, $|10\rangle$, $|11\rangle$). More in general, n qubits live in a $2^n$-dimensional Hilbert space.
+    >
+    > The fact that qubits are in a superposition of an exponential number of classical basis states is one of the ingredients of **quantum advantage** in certain algorithms, but it's sometimes misinterpreted as "qubits contain an exponential amount of classical information". This is **false**, because we are not able to access the amplitudes $\alpha_i$ during the quantum computation.
+    """)
     return
 
 
