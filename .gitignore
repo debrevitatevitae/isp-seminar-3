@@ -12,3 +12,6 @@ wheels/
 # Marimo
 __marimo__/
 layouts/
+
+#Mac
+.DS_Store

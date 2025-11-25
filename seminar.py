@@ -4,13 +4,15 @@ __generated_with = "0.18.0"
 app = marimo.App(width="medium")
 
 
-@app.cell
-def _():
-    import marimo as mo
-    return (mo,)
+app._unparsable_cell(
+    r"""
+    3import marimo as mo
+    """,
+    name="_"
+)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(mo):
     mo.md("""
     #iSP Seminar 3
@@ -29,7 +31,7 @@ def _(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
     ### A primer on quantum computation
@@ -118,7 +120,7 @@ def _(mo, np, phi, qutip, theta):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
     ####Multiple qubit states
@@ -174,6 +176,80 @@ def _(mo):
     > As you can see, 2 qubits give you a state-vector in a 4-dimensional Hilbert space (basis states: $|00\rangle$, $|01\rangle$, $|10\rangle$, $|11\rangle$). More in general, n qubits live in a $2^n$-dimensional Hilbert space.
     >
     > The fact that qubits are in a superposition of an exponential number of classical basis states is one of the ingredients of **quantum advantage** in certain algorithms, but it's sometimes misinterpreted as "qubits contain an exponential amount of classical information". This is **false**, because we are not able to access the amplitudes $\alpha_i$ during the quantum computation.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ####Operations on qubits
+    Quantum algorithms work by applying operations on qubits. In quantum computation, the only operations allowed are linear and **unitary**, that is
+
+    $$
+    U^{-1}=U^\dagger,\quad U\in \mathbb{C}^{2^n\times2^n}.
+    $$
+
+    Since they act linearly on the state-vectors, unitary operations are **matrices**.
+
+    The fact that operations are unitaries allows to preserve the unit norm of the state-vectors.
+
+    $$
+    |\hat{\psi}\rangle = U|\psi\rangle \rightarrow \langle\hat{\psi}|\hat{\psi}\rangle = \langle\psi|U^{\dagger}U|\psi\rangle = \langle\psi|\psi\rangle = 1.
+    $$
+
+    Let's look at some of the most typical 1 and 2 qubit operations or **gates** and their matrix representation. They will recur in almost every quantum circuit.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    _src = "./figures/gate_ops_table.jpg"
+    mo.image(src=_src, rounded=True)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ####Measurements
+    Measurements are what allows to extract information from the quantum system. They are the only non-linear non-unitary operations allowed on qubits.
+
+    #####Example: measurement in the computational basis
+    For the state
+
+    $$
+    |\psi\rangle = \frac{|0\rangle+|1\rangle}{\sqrt{2}}
+    $$
+
+    we want to measure the observable
+
+    $$
+    Z = |0\rangle\langle0| - |1\rangle\langle1| = P_0 - P_1.
+    $$
+
+    The probability of obtaining $|0\rangle$ is
+
+    $$
+    p_0 = \langle\psi|P_0|\psi\rangle = \frac{1}{2},
+    $$
+
+    and the probability of obtaining $|1\rangle$ is
+
+    $$
+    p_1 = \langle\psi|P_1|\psi\rangle = \frac{1}{2}.
+    $$
+
+    The state after measurements can be
+
+    $$
+    \frac{P_0|\psi\rangle}{\sqrt{p_0}} = |0\rangle,
+    $$
+
+    $$
+    \frac{P_1|\psi\rangle}{\sqrt{p_1}} = |1\rangle.
+    $$
     """)
     return
 
