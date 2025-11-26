@@ -4,12 +4,10 @@ __generated_with = "0.18.0"
 app = marimo.App(width="medium")
 
 
-app._unparsable_cell(
-    r"""
-    3import marimo as mo
-    """,
-    name="_"
-)
+@app.cell
+def _():
+    import marimo as mo
+    return (mo,)
 
 
 @app.cell(hide_code=True)
@@ -114,6 +112,7 @@ def _(mo, np, phi, qutip, theta):
 
         # Don't call b.show()
         b.make_sphere()   # ensure it's rendered into b.fig
+
         return b.fig
 
     mo.mpl.interactive(qubit_bloch_plot(theta.value, phi.value))
@@ -250,6 +249,56 @@ def _(mo):
     $$
     \frac{P_1|\psi\rangle}{\sqrt{p_1}} = |1\rangle.
     $$
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ####Quantum circuits
+    Quantum circuits are graphical representations of the qubits and the operations on them. Here is an example...
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    from functools import partial
+    import pennylane as qml
+
+    from pennylane import numpy as pnp
+
+    n_wires = 5
+    n_param_gates = 8
+    n_layers = 6
+
+    dev = qml.device("default.qubit", wires=n_wires)
+
+    @qml.qnode(dev)
+    @partial(qml.transforms.decompose, max_expansion=1)
+    def rnd_circuit():
+        shape = qml.RandomLayers.shape(n_layers=n_layers, n_rotations=n_param_gates)
+        weights = pnp.random.random(size=shape)
+        qml.RandomLayers(weights=weights, wires=range(n_wires))
+        return qml.expval(qml.Z(0))
+
+    fig_gen_circ, _ = qml.draw_mpl(rnd_circuit, decimals = 2, style = "pennylane")()
+    mo.mpl.interactive(fig_gen_circ)
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(r"""
+    Quantum circuits show how an algorithm is implemented with a given alphabet of operations, e.g. [those in the previous section](#operations-on-qubits). Note that they are not the lowest level implementation of the algorithm and that they generally need to be compiled to the quantum hardware, since
+
+    1. The circuit's alphabet might be different than the available operations on hardware.
+    2. The qubit connectivity of the hardware might be limited and we need to re-route some operation.
+
+    Note also how some gates accept parameters. If these parameters are left free, the circuits can learn (up to a certain extent) specific tasks. This is the core idea of variational quantum algorithms (VQAs)[^1] and what we are going to explore next...
+
+    [^1]: Variational Quantum Algorithms, Quantum Machine Learning and Parametrized Quantum Circuits are, to a great extent, synonyms.
     """)
     return
 

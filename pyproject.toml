@@ -8,5 +8,6 @@ dependencies = [
     "ipython>=9.7.0",
     "marimo>=0.18.0",
     "matplotlib>=3.10.7",
+    "pennylane>=0.43.1",
     "qutip>=5.2.2",
 ]
