@@ -67,28 +67,32 @@ def _(mo):
 @app.cell
 def _(mo):
     import qutip
-    import matplotlib.pyplot as plt
 
-    fig = plt.figure(figsize=plt.figaspect(0.5))
+    def _():
+        import matplotlib.pyplot as plt
+    
+        fig = plt.figure(figsize=plt.figaspect(0.5))
+    
+        ax = fig.add_subplot(1, 2, 1, projection='3d')
+        b = qutip.Bloch(axes=ax)
+        b.make_sphere()
+    
+        up = qutip.basis(2, 0)
+        b.add_states(up)
+        b.render()
+    
+        ax = fig.add_subplot(1, 2, 2, projection='3d')
+        b = qutip.Bloch(axes=ax)
+        b.make_sphere()
+    
+        down = qutip.basis(2, 1)
+        b.add_states(down)
+        b.render()
 
-    ax = fig.add_subplot(1, 2, 1, projection='3d')
-    b = qutip.Bloch(axes=ax)
-    b.make_sphere()
+        return fig
 
-    up = qutip.basis(2, 0)
-    b.add_states(up)
-    b.render()
-
-    ax = fig.add_subplot(1, 2, 2, projection='3d')
-    b = qutip.Bloch(axes=ax)
-    b.make_sphere()
-
-    down = qutip.basis(2, 1)
-    b.add_states(down)
-    b.render()
-
-    mo.mpl.interactive(fig)
-    return plt, qutip
+    mo.mpl.interactive(_())
+    return (qutip,)
 
 
 @app.cell
@@ -270,27 +274,29 @@ def _(mo):
 
     from pennylane import numpy as pnp
 
+    rng = pnp.random.default_rng(seed=42)
+
     def _():
-        n_wires = 5
+        n_qubits = 5
         n_param_gates = 8
         n_layers = 6
-    
-        qml.device("default.qubit", wires=n_wires)
-    
-        @qml.qnode(qml.device("default.qubit", wires=n_wires))
+
+        qml.device("default.qubit", wires=n_qubits)
+
+        @qml.qnode(qml.device("default.qubit", wires=n_qubits))
         @partial(qml.transforms.decompose, max_expansion=1)
         def rnd_circuit():
             shape = qml.RandomLayers.shape(n_layers=n_layers, n_rotations=n_param_gates)
-            weights = pnp.random.random(size=shape)
-            qml.RandomLayers(weights=weights, wires=range(n_wires))
+            weights=rng.random(size=shape)
+            qml.RandomLayers(weights=weights, wires=range(n_qubits))
             return qml.expval(qml.Z(0))
-    
+
         fig_gen_circ, _ = qml.draw_mpl(rnd_circuit, decimals = 2, style = "pennylane")()
         return fig_gen_circ
 
 
     mo.mpl.interactive(_())
-    return pnp, qml
+    return pnp, qml, rng
 
 
 @app.cell
@@ -319,7 +325,7 @@ def _(mo):
     If we have access to some samples from a target distribution $\pi$, then we can train $p_\theta$ to be equivalent to $\pi$. This is the principle of Quantum Circuit Born Machines (QCBMs).
 
     ####Ranomly Initialized Circuits
-    Let's first build some quantum circuits with random parameter values and convince ourselves that they generate probability distributions.
+    Let's first build some quantum circuits with parametrized gates. Let's see what happens as we change the parameter values...
 
     [^1]: Variational Quantum Algorithms, Quantum Machine Learning and Parametrized Quantum Circuits are, to a great extent, synonyms.
     """)
@@ -327,51 +333,57 @@ def _(mo):
 
 
 @app.cell
-def _(mo, pnp, qml):
-    rng = pnp.random.default_rng(seed=42)
-
-    nq_qcbm = 5
-    nl_qcbm = 6
+def _(mo, pnp, qml, rng):
+    n_qubits = 5
+    n_layers = 6
 
     # we define the number of times that we sample a circuit (shots).
-    n_shots_qcbm = 1_000
+    n_shots = 1_000
 
     # a PennyLane device is either a real device or a simulator.
-    dev = qml.device("default.qubit", wires=nq_qcbm, shots=n_shots_qcbm)
+    dev = qml.device("default.qubit", wires=n_qubits, shots=n_shots)
 
-    wshape = qml.StronglyEntanglingLayers.shape(n_layers=nl_qcbm, n_wires=nq_qcbm)
-    # weights = np.random.random(size=wshape)
-    weights = rng.random(size=wshape)
+    wshape = qml.StronglyEntanglingLayers.shape(n_layers=n_layers, n_wires=n_qubits)
+    weights = rng.uniform(low=-pnp.pi, high=pnp.pi, size=wshape)
 
     # PennyLane QNode. Differentiable quantum function.
     @qml.qnode(dev)
-    def qcbm_circuit_0(weights):
-        qml.StronglyEntanglingLayers(weights=weights, ranges=[1] * nl_qcbm, wires=range(nq_qcbm))
+    def circuit_qcbm(weights):
+        qml.StronglyEntanglingLayers(weights=weights, ranges=[1] * n_layers, wires=range(n_qubits))
         return qml.counts(all_outcomes=True)
 
-    fig_qcbm_0, _ = qml.draw_mpl(qcbm_circuit_0, decimals = 2, style = "pennylane")(weights)
-    mo.mpl.interactive(fig_qcbm_0)
-    return n_shots_qcbm, nq_qcbm, qcbm_circuit_0, weights
+    fig_qcbm, _ = qml.draw_mpl(circuit_qcbm, decimals = 2, style = "pennylane")(weights)
+    
+    mo.mpl.interactive(fig_qcbm)
+    return circuit_qcbm, n_qubits, n_shots, weights
 
 
 @app.cell
-def _(n_shots_qcbm, nq_qcbm, plt, qcbm_circuit_0, weights):
-    outcomes = qcbm_circuit_0(weights)
+def _(circuit_qcbm, mo, n_qubits, n_shots, weights):
+    outcomes = circuit_qcbm(weights)
     bitstrings = outcomes.keys()
-    relative_counts = [v / n_shots_qcbm for v in outcomes.values()]
+    relative_counts = [v / n_shots for v in outcomes.values()]
 
-    plt.bar(
-        outcomes.keys(),
-        relative_counts
-    )
+    def _():
+        import matplotlib.pyplot as plt
+    
+        plt.bar(
+            outcomes.keys(),
+            relative_counts
+        )
+    
+        plt.xticks(range(2 ** n_qubits), bitstrings, rotation=80)
+        return plt.gcf()
 
-    plt.xticks(range(2 ** nq_qcbm), bitstrings, rotation=80)
-    plt.show()
+    mo.mpl.interactive(_())
     return
 
 
 @app.cell
-def _():
+def _(mo):
+    mo.md(r"""
+    As we can see, different parameter values provide us with different distibutions. What we need now is a training routine to bring our QCBM distribution close to the distribution of the data.
+    """)
     return
 
 
