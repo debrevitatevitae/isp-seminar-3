@@ -10,14 +10,15 @@ def _():
     return (mo,)
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(mo):
     mo.md("""
     #iSP Seminar 3
     ## Parametrized quantum circuits and variational quantum machine learning
 
     ###Contents
-    1. [A primer on quantum computation](#a primer on quantum computation)
+    1. [A primer on quantum computation](#a-primer-on-quantum-computation)
+    2. [Quantum Circuit Born Machine](#quantum-circuit-born-machine)
 
     ### Disclaimer
     We will talk here about **parametrized quantum circuits**. They allow to build relatively compact quantum models, that are runnable on **near-term quantum hardware** within a **classical-quantum training loop**.
@@ -87,7 +88,7 @@ def _(mo):
     b.render()
 
     mo.mpl.interactive(fig)
-    return (qutip,)
+    return plt, qutip
 
 
 @app.cell
@@ -262,30 +263,34 @@ def _(mo):
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def _(mo):
     from functools import partial
     import pennylane as qml
 
     from pennylane import numpy as pnp
 
-    n_wires = 5
-    n_param_gates = 8
-    n_layers = 6
+    def _():
+        n_wires = 5
+        n_param_gates = 8
+        n_layers = 6
+    
+        qml.device("default.qubit", wires=n_wires)
+    
+        @qml.qnode(qml.device("default.qubit", wires=n_wires))
+        @partial(qml.transforms.decompose, max_expansion=1)
+        def rnd_circuit():
+            shape = qml.RandomLayers.shape(n_layers=n_layers, n_rotations=n_param_gates)
+            weights = pnp.random.random(size=shape)
+            qml.RandomLayers(weights=weights, wires=range(n_wires))
+            return qml.expval(qml.Z(0))
+    
+        fig_gen_circ, _ = qml.draw_mpl(rnd_circuit, decimals = 2, style = "pennylane")()
+        return fig_gen_circ
 
-    dev = qml.device("default.qubit", wires=n_wires)
 
-    @qml.qnode(dev)
-    @partial(qml.transforms.decompose, max_expansion=1)
-    def rnd_circuit():
-        shape = qml.RandomLayers.shape(n_layers=n_layers, n_rotations=n_param_gates)
-        weights = pnp.random.random(size=shape)
-        qml.RandomLayers(weights=weights, wires=range(n_wires))
-        return qml.expval(qml.Z(0))
-
-    fig_gen_circ, _ = qml.draw_mpl(rnd_circuit, decimals = 2, style = "pennylane")()
-    mo.mpl.interactive(fig_gen_circ)
-    return
+    mo.mpl.interactive(_())
+    return pnp, qml
 
 
 @app.cell
@@ -298,8 +303,75 @@ def _(mo):
 
     Note also how some gates accept parameters. If these parameters are left free, the circuits can learn (up to a certain extent) specific tasks. This is the core idea of variational quantum algorithms (VQAs)[^1] and what we are going to explore next...
 
+    ###Quantum Circuit Born Machine
+    We saw that quantum states implicitely define **probability distributions** over bitstrings ($|00\dots0\rangle$, $|00\dots1\rangle$, ..., $|11\dots1\rangle$). When measured in the computational basis, the outcome will be one of the $2^n$ possible bitstrings,
+
+    $$
+    x\sim p(x)=|\langle x|\psi\rangle|^2.
+    $$
+
+    By parametrizing the quantum circuit that prepares $|\psi\rangle$, the probability function will be parametrized itself,
+
+    $$
+    p_\theta(x)=|\langle x|\psi_\theta\rangle|^2.
+    $$
+
+    If we have access to some samples from a target distribution $\pi$, then we can train $p_\theta$ to be equivalent to $\pi$. This is the principle of Quantum Circuit Born Machines (QCBMs).
+
+    ####Ranomly Initialized Circuits
+    Let's first build some quantum circuits with random parameter values and convince ourselves that they generate probability distributions.
+
     [^1]: Variational Quantum Algorithms, Quantum Machine Learning and Parametrized Quantum Circuits are, to a great extent, synonyms.
     """)
+    return
+
+
+@app.cell
+def _(mo, pnp, qml):
+    rng = pnp.random.default_rng(seed=42)
+
+    nq_qcbm = 5
+    nl_qcbm = 6
+
+    # we define the number of times that we sample a circuit (shots).
+    n_shots_qcbm = 1_000
+
+    # a PennyLane device is either a real device or a simulator.
+    dev = qml.device("default.qubit", wires=nq_qcbm, shots=n_shots_qcbm)
+
+    wshape = qml.StronglyEntanglingLayers.shape(n_layers=nl_qcbm, n_wires=nq_qcbm)
+    # weights = np.random.random(size=wshape)
+    weights = rng.random(size=wshape)
+
+    # PennyLane QNode. Differentiable quantum function.
+    @qml.qnode(dev)
+    def qcbm_circuit_0(weights):
+        qml.StronglyEntanglingLayers(weights=weights, ranges=[1] * nl_qcbm, wires=range(nq_qcbm))
+        return qml.counts(all_outcomes=True)
+
+    fig_qcbm_0, _ = qml.draw_mpl(qcbm_circuit_0, decimals = 2, style = "pennylane")(weights)
+    mo.mpl.interactive(fig_qcbm_0)
+    return n_shots_qcbm, nq_qcbm, qcbm_circuit_0, weights
+
+
+@app.cell
+def _(n_shots_qcbm, nq_qcbm, plt, qcbm_circuit_0, weights):
+    outcomes = qcbm_circuit_0(weights)
+    bitstrings = outcomes.keys()
+    relative_counts = [v / n_shots_qcbm for v in outcomes.values()]
+
+    plt.bar(
+        outcomes.keys(),
+        relative_counts
+    )
+
+    plt.xticks(range(2 ** nq_qcbm), bitstrings, rotation=80)
+    plt.show()
+    return
+
+
+@app.cell
+def _():
     return
 
 
