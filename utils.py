@@ -30,7 +30,7 @@ class BarsAndStripes:
         self.int_labels = []
         for d in self.data:
             self.bitstrings += ["".join(str(int(i)) for i in d)]
-            self.int_labels += [int(bitstrings[-1], 2)]
+            self.int_labels += [int(self.bitstrings[-1], 2)]
 
 
     def plot_sample(self, sample_id: int) -> matplotlib.figure.Figure:

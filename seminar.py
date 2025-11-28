@@ -311,10 +311,10 @@ def _(mo):
     Optimization of parametrized quantum circuits is the core idea of Variational Quantum Algorithms (VQAs)[^1]. At iteration $t$:
 
     $$
-    \begin{align}
+    \begin{align*}
         f(x) = \langle\psi_\theta|O(x)|\psi_\theta\rangle\qquad &(\text{quantum}),\\
         \theta^{t+1} = \theta^{t} - \eta\nabla_{\theta^t}\qquad &(\text{classical}).
-    \end{align}
+    \end{align*}
     $$
     """)
     return
@@ -406,6 +406,71 @@ def _(mo):
     As we can see, different parameter values provide us with different distibutions.
 
     Now we need a training routine to bring our QCBM distribution close to the distribution of the data.
+
+    ####Bars and Stripes images
+    We take a toy example that will require a few qubits (9) to show the QCBM learning. It consists of images of bars and stripes corresponding to bitstrings, which allows easy encoding in the quantum circuit.
+    """)
+    return
+
+
+@app.cell
+def _():
+    from utils import BarsAndStripes
+
+    ds = BarsAndStripes(n=3)
+
+    ds.plot_sample(sample_id=2)
+    return (ds,)
+
+
+@app.cell
+def _(ds):
+    ds.plot_dataset()
+    return
+
+
+@app.cell
+def _(ds):
+    ds.plot_data_dist()
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(r"""
+    **Task**: we want to train the QCBM. If we are successful, after training, it should generate only bars and stripes images.
+
+    ####Training
+    The QCBM does not give us an explicit probability distribution. This is because quantum mechanics does not allow to observe the full state vector, but only to draw samples from it.
+
+    In other words **we do not have access to the likelihood** $p(x|\theta)$, but only to **samples** of it[^1],
+
+    $$
+    x\sim p(x)=|\langle x|\psi\rangle|^2.
+    $$
+
+    Therefore, we cannot use the KL-divergence,
+
+    $$
+    D(p||\pi)=\sum_{x\sim \mathcal{X}} p(x|\theta)\log\bigg(\frac{p(x|\theta)}{\pi(x)}\bigg).
+    $$
+
+    For training the QCBM, but we need to use a loss based on samples. An example is the **Maximum Mean Discrepancy** (MMD),
+
+    $$
+    \begin{align*}
+    \mathcal{L}(\theta)&=\bigg|\bigg| \sum_{x\sim \mathcal{X}}p(x|\theta)\phi(x)-\sum_{x\sim \mathcal{X}}\pi(x)\phi(x) \bigg|\bigg| ^2\\
+    &=\mathbb{E}_{x,y\sim p_{\theta}}[K(x,y)] - 2\mathbb{E}_{x\sim p_{\theta},\,y\sim\pi}[K(x,y)] + \mathbb{E}_{x,y\sim \pi}[K(x,y)].
+    \end{align*}
+    $$
+
+    The second equality is what allows the calculation of the MMD via the _kernel trick_. Here we use a mixture of a Gaussian kernels with different scales,
+
+    $$
+    K(x,y)=\frac{1}{N_s}\sum_{i=1}^{N_s}\exp\bigg(\frac{|x-y|^2}{2\sigma_i^2}\bigg).
+    $$
+
+    [^1]: If we are running on a simulator, we **do** have access to the likelihood, as we will se later.
     """)
     return
 
