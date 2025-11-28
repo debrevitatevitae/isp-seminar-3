@@ -267,13 +267,11 @@ def _(mo):
 
 
 @app.cell
-def _(mo):
+def _(mo, np):
     from functools import partial
     import pennylane as qml
 
-    from pennylane import numpy as pnp
-
-    rng = pnp.random.default_rng(seed=42)
+    rng = np.random.default_rng(seed=42)
 
     def _():
         n_qubits = 5
@@ -295,7 +293,7 @@ def _(mo):
 
 
     mo.mpl.interactive(_())
-    return pnp, qml, rng
+    return partial, qml, rng
 
 
 @app.cell
@@ -354,7 +352,7 @@ def _(mo):
 
 
 @app.cell
-def _(mo, pnp, qml, rng):
+def _(mo, np, partial, qml, rng):
     n_qubits = 5
     n_layers = 6
 
@@ -365,10 +363,11 @@ def _(mo, pnp, qml, rng):
     dev = qml.device("default.qubit", wires=n_qubits, shots=n_shots)
 
     wshape = qml.StronglyEntanglingLayers.shape(n_layers=n_layers, n_wires=n_qubits)
-    weights = rng.uniform(low=-pnp.pi, high=pnp.pi, size=wshape)
+    weights = rng.uniform(low=-np.pi, high=np.pi, size=wshape)
 
     # PennyLane QNode. Differentiable quantum function.
     @qml.qnode(dev)
+    @partial(qml.transforms.decompose, max_expansion=1)
     def circuit_qcbm(weights):
         qml.StronglyEntanglingLayers(weights=weights, ranges=[1] * n_layers, wires=range(n_qubits))
         return qml.counts(all_outcomes=True)
@@ -472,6 +471,58 @@ def _(mo):
 
     [^1]: If we are running on a simulator, we **do** have access to the likelihood, as we will se later.
     """)
+    return
+
+
+@app.cell
+def _():
+    import jax
+    import jax.numpy as jnp
+
+    jax.config.update("jax_enable_x64", True)
+
+
+    class MMD:
+
+        def __init__(self, scales, data):
+            gammas = 1 / (2 * (scales**2))
+            sq_dists = jnp.abs(data[:, None] - data[None, :]) ** 2
+            self.K = sum(jnp.exp(-gamma * sq_dists) for gamma in gammas) / len(scales)
+            self.scales = scales
+
+        def k_expval(self, px, py):
+            # Kernel expectation value
+            return px @ self.K @ py
+
+        def __call__(self, px, py):
+            pxy = px - py
+            return self.k_expval(pxy, pxy)
+    return (jax,)
+
+
+@app.cell
+def _(jax, partial):
+    class QCBM:
+
+        def __init__(self, circ, mmd, py):
+            self.circ = circ
+            self.mmd = mmd
+            self.py = py  # target distribution π(x)
+
+        @partial(jax.jit, static_argnums=0)
+        def mmd_loss(self, params):
+            px = self.circ(params)
+            return self.mmd(px, self.py), px
+    return
+
+
+@app.cell
+def _():
+    return
+
+
+@app.cell
+def _():
     return
 
 
