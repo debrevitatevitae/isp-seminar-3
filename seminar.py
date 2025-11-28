@@ -20,10 +20,9 @@ def _(mo):
     1. [A primer on quantum computation](#a-primer-on-quantum-computation)
     2. [Quantum Circuit Born Machine](#quantum-circuit-born-machine)
 
-    ### Disclaimer
-    We will talk here about **parametrized quantum circuits**. They allow to build relatively compact quantum models, that are runnable on **near-term quantum hardware** within a **classical-quantum training loop**.
+    **Disclaimer 1**: We will not touch on Quantum Hidden Markov Models (QHMM) just yet. Sorry ☹️...
 
-    This is nowadays the most common form of quantum machine learning (QML), especially in applications. But QML is not limited to this! For an interesting and critical primer on the subject, see [^1].
+    **Disclaimer 2**: We will talk here about **parametrized quantum circuits**. They allow to build relatively compact quantum models, that are runnable on **near-term quantum hardware** within a **classical-quantum training loop**. This is nowadays the most common form of quantum machine learning (QML), especially in applications. But QML is not limited to this! For an interesting and critical primer on the subject, see [^1].
 
     [^1]: S.Y. Chuang, M. Cerezo *A Primer on Quantum Machine Learning*, arXiv:2511.15969
     """)
@@ -70,21 +69,21 @@ def _(mo):
 
     def _():
         import matplotlib.pyplot as plt
-    
+
         fig = plt.figure(figsize=plt.figaspect(0.5))
-    
+
         ax = fig.add_subplot(1, 2, 1, projection='3d')
         b = qutip.Bloch(axes=ax)
         b.make_sphere()
-    
+
         up = qutip.basis(2, 0)
         b.add_states(up)
         b.render()
-    
+
         ax = fig.add_subplot(1, 2, 2, projection='3d')
         b = qutip.Bloch(axes=ax)
         b.make_sphere()
-    
+
         down = qutip.basis(2, 1)
         b.add_states(down)
         b.render()
@@ -307,8 +306,30 @@ def _(mo):
     1. The circuit's alphabet might be different than the available operations on hardware.
     2. The qubit connectivity of the hardware might be limited and we need to re-route some operation.
 
-    Note also how some gates accept parameters. If these parameters are left free, the circuits can learn (up to a certain extent) specific tasks. This is the core idea of variational quantum algorithms (VQAs)[^1] and what we are going to explore next...
+    Note also how some gates accept parameters. If these parameters are left free, the circuits can learn (up to a certain extent) specific tasks.
 
+    Optimization of parametrized quantum circuits is the core idea of Variational Quantum Algorithms (VQAs)[^1]. At iteration $t$:
+
+    $$
+    \begin{align}
+        f(x) = \langle\psi_\theta|O(x)|\psi_\theta\rangle\qquad &(\text{quantum}),\\
+        \theta^{t+1} = \theta^{t} - \eta\nabla_{\theta^t}\qquad &(\text{classical}).
+    \end{align}
+    $$
+    """)
+    return
+
+
+@app.cell
+def _(mo):
+    _src = "./figures/vqa_scheme.png"
+    mo.image(src=_src, rounded=True)
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(r"""
     ###Quantum Circuit Born Machine
     We saw that quantum states implicitely define **probability distributions** over bitstrings ($|00\dots0\rangle$, $|00\dots1\rangle$, ..., $|11\dots1\rangle$). When measured in the computational basis, the outcome will be one of the $2^n$ possible bitstrings,
 
@@ -353,7 +374,7 @@ def _(mo, pnp, qml, rng):
         return qml.counts(all_outcomes=True)
 
     fig_qcbm, _ = qml.draw_mpl(circuit_qcbm, decimals = 2, style = "pennylane")(weights)
-    
+
     mo.mpl.interactive(fig_qcbm)
     return circuit_qcbm, n_qubits, n_shots, weights
 
@@ -366,12 +387,12 @@ def _(circuit_qcbm, mo, n_qubits, n_shots, weights):
 
     def _():
         import matplotlib.pyplot as plt
-    
+
         plt.bar(
             outcomes.keys(),
             relative_counts
         )
-    
+
         plt.xticks(range(2 ** n_qubits), bitstrings, rotation=80)
         return plt.gcf()
 
@@ -382,7 +403,9 @@ def _(circuit_qcbm, mo, n_qubits, n_shots, weights):
 @app.cell
 def _(mo):
     mo.md(r"""
-    As we can see, different parameter values provide us with different distibutions. What we need now is a training routine to bring our QCBM distribution close to the distribution of the data.
+    As we can see, different parameter values provide us with different distibutions.
+
+    Now we need a training routine to bring our QCBM distribution close to the distribution of the data.
     """)
     return
 
