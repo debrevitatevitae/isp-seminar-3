@@ -8,6 +8,13 @@ import numpy as np
 class BarsAndStripes:
 
     def __init__(self, n: int) -> None:
+        """Dataset of binary-pixel images consisting of either bars or stripes.
+        Can be used for unsupervised learning.
+
+        Args:
+            n(int): number of pixels.
+        """
+
         self.n_pixels = n
         self.size = n ** 2
 
@@ -34,6 +41,11 @@ class BarsAndStripes:
 
 
     def plot_sample(self, sample_id: int) -> matplotlib.figure.Figure:
+        """Plots one of the bar/stripes images.
+
+        Args:
+            sample_id (int): id of the image to plot.
+        """
         n = self.n_pixels
         sample = self.data[sample_id].reshape(n, n)
 
@@ -61,6 +73,7 @@ class BarsAndStripes:
 
 
     def plot_dataset(self) -> matplotlib.figure.Figure:
+        """Plots the entire set of images."""
         n = self.n_pixels
 
         plt.figure(figsize=(4, 4))
@@ -76,6 +89,10 @@ class BarsAndStripes:
 
 
     def plot_data_dist(self) -> matplotlib.figure.Figure:
+        """Plots the distribution of the bitstrings.
+        Each bitstring has probability equal to 1/size(image_data) if it corresponds
+        to a bar or stripes image, zero otherwise.
+        """
         probs = np.zeros(2**self.size)
         probs[self.int_labels] = 1 / len(self.data)
 
