@@ -1,5 +1,4 @@
-import pdb
-
+from jax import numpy as jnp
 import matplotlib.figure
 import matplotlib.pyplot as plt
 import numpy as np
@@ -39,6 +38,13 @@ class BarsAndStripes:
             self.bitstrings += ["".join(str(int(i)) for i in d)]
             self.int_labels += [int(self.bitstrings[-1], 2)]
 
+        self.probs = np.zeros(2**self.size)
+        self.probs[self.int_labels] = 1 / len(self.data)
+
+
+    def sample_integer(self, n) -> np.ndarray:
+        return np.random.choice(self.int_labels, size=n, p=self.probs[self.int_labels])
+
 
     def plot_sample(self, sample_id: int) -> matplotlib.figure.Figure:
         """Plots one of the bar/stripes images.
@@ -59,7 +65,7 @@ class BarsAndStripes:
 
         for i in range(n):
             for j in range(n):
-                text = plt.text(
+                plt.text(
                     i,
                     j,
                     sample[j][i],
@@ -68,8 +74,6 @@ class BarsAndStripes:
                     color="gray",
                     fontsize=12,
                 )
-
-        return plt.gcf()
 
 
     def plot_dataset(self) -> matplotlib.figure.Figure:
@@ -85,19 +89,14 @@ class BarsAndStripes:
             plt.xticks([])
             plt.yticks([])
 
-        return plt.gcf()
-
 
     def plot_data_dist(self) -> matplotlib.figure.Figure:
         """Plots the distribution of the bitstrings.
         Each bitstring has probability equal to 1/size(image_data) if it corresponds
         to a bar or stripes image, zero otherwise.
         """
-        probs = np.zeros(2**self.size)
-        probs[self.int_labels] = 1 / len(self.data)
-
         plt.figure(figsize=(12, 5))
-        plt.bar(np.arange(2**self.size), probs, width=2.0, label=r"$\pi(x)$")
+        plt.bar(np.arange(2**self.size), self.probs, width=2.0, label=r"$\pi(x)$")
         plt.xticks(self.int_labels, self.bitstrings, rotation=80)
 
         plt.xlabel("Samples")
@@ -105,8 +104,69 @@ class BarsAndStripes:
         plt.legend(loc="upper right")
         plt.subplots_adjust(bottom=0.3)
 
-        return plt.gcf()
 
+class MMD_Gauss_Mix():
+    def __init__(self, scales, circuit, target_dist, n_shots):
+        self.scales = scales
+        self.gammas = 1 / (2 * scales ** 2)
+        self.circuit = circuit
+        self.target_dist = target_dist
+        self.n_shots = n_shots
+        
+        self.weights = None
+
+    def get_circuit_samples(self, weights):
+        return jnp.array([jnp.dot(pred, 2 ** jnp.arange(pred.size -1, -1, -1)) for pred in self.circuit(weights)])
+
+    def get_target_samples(self):
+        return jnp.array(self.target_dist(self.n_shots))
+
+    def compute_kernel(self, x, y):
+        k_xy = 0.
+        for gamma in self.gammas:
+            k_xy += jnp.exp(gamma * (x-y)**2)
+            
+        return k_xy / len(self.scales)
+
+    def compute_kernel_expv(self, x_samples, y_samples):
+        exp_k = 0.
+        for x_i, y_i in zip(x_samples, y_samples):
+            exp_k += self.compute_kernel(x_i, y_i)
+
+        return exp_k / self.n_shots
+
+    def compute_loss(self, weights):
+        exp_k_p_p = self.compute_kernel_expv(self.get_circuit_samples(weights), self.get_circuit_samples(weights))
+        exp_k_p_pi = self.compute_kernel_expv(self.get_circuit_samples(weights), self.get_target_samples())
+        exp_k_pi_pi = self.compute_kernel_expv(self.get_target_samples(), self.get_target_samples())
+
+        return exp_k_p_p - 2 * exp_k_p_pi + exp_k_pi_pi
+
+    def compute_partial_weight(self, weights, index):
+        theta_plus = jnp.ravel(weights.copy())
+        theta_plus.at[index].add(jnp.pi/2)
+        theta_plus = jnp.reshape(theta_plus, shape=weights.shape)
+        
+        theta_minus = jnp.ravel(weights.copy())
+        theta_minus.at[index].subtract(jnp.pi/2)
+        theta_minus = jnp.reshape(theta_minus, shape=weights.shape)
+        
+        # p_theta_+, p_theta
+        exp_k_p_plus_p = self.compute_kernel_expv(self.get_circuit_samples(theta_plus), self.get_circuit_samples(weights))
+        
+        # p_theta_-, p_theta
+        exp_k_p_minus_p = self.compute_kernel_expv(self.get_circuit_samples(theta_minus), self.get_circuit_samples(weights))
+        
+        # p_theta_+, pi
+        exp_k_p_plus_pi = self.compute_kernel_expv(self.get_circuit_samples(theta_plus), self.get_target_samples())
+        
+        # p_theta_-, pi
+        exp_k_p_minus_pi = self.compute_kernel_expv(self.get_circuit_samples(theta_minus), self.get_target_samples())
+
+        return exp_k_p_plus_p - exp_k_p_minus_p - exp_k_p_plus_pi + exp_k_p_minus_pi
+
+    def compute_gradient(self, weights):
+        return jnp.array([self.compute_partial_weight(weights, i) for i in range(weights.size)])
 
 
 def main():
