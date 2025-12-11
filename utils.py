@@ -1,3 +1,6 @@
+from functools import partial
+
+import jax
 from jax import numpy as jnp
 import matplotlib.figure
 import matplotlib.pyplot as plt
@@ -112,6 +115,7 @@ class MMD_Gauss_Mix:
 
         self.weights = None
 
+    @partial(jax.jit, static_argnums=0)
     def get_circuit_samples(self, weights):
         return jnp.array(
             [
@@ -137,6 +141,7 @@ class MMD_Gauss_Mix:
 
         return exp_k / self.n_shots
 
+    @partial(jax.jit, static_argnums=0)
     def compute_loss(self, weights):
         exp_k_p_p = self.compute_kernel_expv(
             self.get_circuit_samples(weights), self.get_circuit_samples(weights)
@@ -150,6 +155,7 @@ class MMD_Gauss_Mix:
 
         return exp_k_p_p - 2 * exp_k_p_pi + exp_k_pi_pi
 
+    @partial(jax.jit, static_argnums=0)
     def compute_partial_weight(self, weights, index):
         theta_plus = weights.copy()
         theta_plus.at[index].add(jnp.pi / 2)
@@ -179,10 +185,11 @@ class MMD_Gauss_Mix:
 
         return exp_k_p_plus_p - exp_k_p_minus_p - exp_k_p_plus_pi + exp_k_p_minus_pi
 
+    @partial(jax.jit, static_argnums=0)
     def compute_gradient(self, weights):
         grad = jnp.empty_like(weights)
 
-        for idx in np.ndindex(weights):
+        for idx in np.ndindex(weights.shape):
             grad.at[idx].set(self.compute_partial_weight(weights, idx))
 
         return grad
