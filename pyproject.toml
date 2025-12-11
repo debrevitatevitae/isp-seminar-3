@@ -13,5 +13,6 @@ dependencies = [
     "matplotlib>=3.10.7",
     "optax>=0.2.6",
     "pennylane>=0.43.1",
+    "pytest>=9.0.2",
     "qutip>=5.2.2",
 ]
