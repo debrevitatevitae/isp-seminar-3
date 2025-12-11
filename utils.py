@@ -106,23 +106,18 @@ class BarsAndStripes:
 
 
 class MMD_Gauss_Mix:
-    def __init__(self, scales, circuit, target_dist, n_shots):
+    def __init__(self, scales, param_dist, target_dist, n_shots):
         self.scales = scales
         self.gammas = 1 / (2 * scales)
-        self.circuit = circuit
+        self.param_dist = param_dist
         self.target_dist = target_dist
         self.n_shots = n_shots
 
         self.weights = None
 
     @partial(jax.jit, static_argnums=0)
-    def get_circuit_samples(self, weights):
-        return jnp.array(
-            [
-                jnp.dot(pred, 2 ** jnp.arange(pred.size - 1, -1, -1))
-                for pred in self.circuit(weights)
-            ]
-        )
+    def get_ansatz_samples(self, weights):
+        return self.param_dist(weights)
 
     def get_target_samples(self):
         return jnp.array(self.target_dist(self.n_shots))
@@ -144,10 +139,10 @@ class MMD_Gauss_Mix:
     @partial(jax.jit, static_argnums=0)
     def compute_loss(self, weights):
         exp_k_p_p = self.compute_kernel_expv(
-            self.get_circuit_samples(weights), self.get_circuit_samples(weights)
+            self.get_ansatz_samples(weights), self.get_ansatz_samples(weights)
         )
         exp_k_p_pi = self.compute_kernel_expv(
-            self.get_circuit_samples(weights), self.get_target_samples()
+            self.get_ansatz_samples(weights), self.get_target_samples()
         )
         exp_k_pi_pi = self.compute_kernel_expv(
             self.get_target_samples(), self.get_target_samples()
@@ -165,22 +160,22 @@ class MMD_Gauss_Mix:
 
         # p_theta_+, p_theta
         exp_k_p_plus_p = self.compute_kernel_expv(
-            self.get_circuit_samples(theta_plus), self.get_circuit_samples(weights)
+            self.get_ansatz_samples(theta_plus), self.get_ansatz_samples(weights)
         )
 
         # p_theta_-, p_theta
         exp_k_p_minus_p = self.compute_kernel_expv(
-            self.get_circuit_samples(theta_minus), self.get_circuit_samples(weights)
+            self.get_ansatz_samples(theta_minus), self.get_ansatz_samples(weights)
         )
 
         # p_theta_+, pi
         exp_k_p_plus_pi = self.compute_kernel_expv(
-            self.get_circuit_samples(theta_plus), self.get_target_samples()
+            self.get_ansatz_samples(theta_plus), self.get_target_samples()
         )
 
         # p_theta_-, pi
         exp_k_p_minus_pi = self.compute_kernel_expv(
-            self.get_circuit_samples(theta_minus), self.get_target_samples()
+            self.get_ansatz_samples(theta_minus), self.get_target_samples()
         )
 
         return exp_k_p_plus_p - exp_k_p_minus_p - exp_k_p_plus_pi + exp_k_p_minus_pi
